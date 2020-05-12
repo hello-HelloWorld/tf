@@ -4,7 +4,11 @@ import java.io.{File, PrintWriter}
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
+import org.apache.spark.mllib.classification.{LogisticRegressionModel, LogisticRegressionWithLBFGS}
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import redis.clients.jedis.Jedis
 import utils.RedisUtil
@@ -87,11 +91,76 @@ object Train {
         for ((k, v) <- relationsInfo) {
           //如果index==2，意味着前3分钟的数据已经组装到了dataX中，那么下一时刻的数据，如果是目标卡口，则需要存放于dataY中
           if (k == monitorID && index == 2) {
+            val nextMoment = oneMoment + 60 * 1000
+            val nextHM = hourMinuteSDF.format(new Date(nextMoment)) //1027
 
+            //判断是否有数据
+            if (v.containsKey(nextHM)) {
+              val speedAndCarCount = v.get(nextHM).split("_")
+              val valueY = speedAndCarCount(0).toFloat / speedAndCarCount(1).toFloat //得到第4分钟的平均车速
+              dataY += valueY
+            }
+          }
+          //取出前3分钟的dataX
+          if (v.containsKey(oneHM)) {
+            val speedAndCarCount: Array[String] = v.get(oneHM).split("_")
+            val valueX = speedAndCarCount(0).toFloat / speedAndCarCount(1).toFloat //得到当前这一分钟的特征值
+            dataX += valueX
+          } else {
+            dataX += 60.0F
           }
         }
       }
+      //准备训练模型
+      //先将dataX和dataY映射于一个LabelePoint对象中
+      if (dataY.toArray.length == 1) {
+        val label: Double = dataY.toArray.head //答案的平均车速
+        //label的取值范围是：0~15， 30~60  ----->  0, 1, 2, 3, 4, 5, 6
+        //真实情况：0~120KM/H车速，划分7个级别，公式就如下：
+        val record: LabeledPoint = LabeledPoint(if (label / 10 < 6) (label / 10).toInt else 6, Vectors.dense(dataX.toArray))
+        dataTrain += record
+      }
     }
 
+    //将数据集写入到文件中方便查看
+    dataTrain.foreach(record => {
+      println(record)
+      writer.write(record.toString() + "\n")
+    })
+
+    //开始组装训练集和测试集
+    val rddData: RDD[LabeledPoint] = sc.makeRDD(dataTrain)
+    val randomSplits: Array[RDD[LabeledPoint]] = rddData.randomSplit(Array(0.6, 0.4), 11L)
+    //训练集
+    val trainData: RDD[LabeledPoint] = randomSplits(0)
+    //测试集
+    val testData: RDD[LabeledPoint] = randomSplits(1)
+
+    //使用训练集进行建模
+    val model: LogisticRegressionModel = new LogisticRegressionWithLBFGS().setNumClasses(7).run(trainData)
+    //完成建模后，使用测试集，评估模型准确度
+    val predictionAndLabels: RDD[(Double, Double)] = testData.map {
+      case LabeledPoint(label, features) =>
+        val prediction = model.predict(features)
+        (prediction, label)
+    }
+
+    //得到当前评估值
+    val metrics: MulticlassMetrics = new MulticlassMetrics(predictionAndLabels)
+    val accuracy: Double = metrics.accuracy //取值范围0.0~1.0
+    println("评估值：" + accuracy)
+    writer.write(accuracy + "\n")
+
+    //设置评估阈值:超过多少精确度，则保存模型
+    if (accuracy > 0.0) {
+      //将模型保存到hdfs中
+      val hdfsPath = "hdfs://linux01:8020/traffic/model/" + monitorID + "_" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(System.currentTimeMillis()))
+      model.save(sc, hdfsPath)
+      jedis.hset("model", monitorID, hdfsPath)
+    }
   })
+  //释放redis连接
+  RedisUtil.pool.returnResource(jedis)
+  writer.flush()
+  writer.close()
 }

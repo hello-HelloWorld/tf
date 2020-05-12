@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/tf.iml" filepath="$PROJECT_DIR$/tf.iml" />
       <module fileurl="file://$PROJECT_DIR$/tf_consumer/tf_consumer.iml" filepath="$PROJECT_DIR$/tf_consumer/tf_consumer.iml" />
       <module fileurl="file://$PROJECT_DIR$/tf_modeling/tf_modeling.iml" filepath="$PROJECT_DIR$/tf_modeling/tf_modeling.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tf_prediction/tf_prediction.iml" filepath="$PROJECT_DIR$/tf_prediction/tf_prediction.iml" />
       <module fileurl="file://$PROJECT_DIR$/tf_producer/tf_producer.iml" filepath="$PROJECT_DIR$/tf_producer/tf_producer.iml" />
     </modules>
   </component>

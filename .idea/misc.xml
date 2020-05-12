@@ -6,6 +6,7 @@
         <option value="$PROJECT_DIR$/tf_producer/pom.xml" />
         <option value="$PROJECT_DIR$/tf_consumer/pom.xml" />
         <option value="$PROJECT_DIR$/tf_modeling/pom.xml" />
+        <option value="$PROJECT_DIR$/tf_prediction/pom.xml" />
       </list>
     </option>
   </component>

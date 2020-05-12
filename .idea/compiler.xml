@@ -8,12 +8,14 @@
         <outputRelativeToContentRoot value="true" />
         <module name="tf_consumer" />
         <module name="tf_modeling" />
+        <module name="tf_prediction" />
         <module name="tf_producer" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="tf_consumer" target="1.5" />
       <module name="tf_modeling" target="1.5" />
+      <module name="tf_prediction" target="1.5" />
       <module name="tf_producer" target="1.5" />
     </bytecodeTargetLevel>
   </component>
