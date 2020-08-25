@@ -7,7 +7,7 @@ import java.util.Calendar
 import com.alibaba.fastjson.{JSON, TypeReference}
 import kafka.serializer.StringDecoder
 import org.apache.spark.rdd.RDD
-import org.apache.spark.streaming.dstream.DStream
+import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.kafka.KafkaUtils
 import org.apache.spark.streaming.{Seconds, StreamingContext, kafka}
 import org.apache.spark.{SparkConf, SparkContext}
